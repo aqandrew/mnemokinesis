@@ -11,43 +11,104 @@ import sys
 import textwrap
 
 class Mnemokinesis(object):
-	frames_total = 256
+	"""
+	Memory is represented here as a string, to simplify worst- and best-fit algorithms.
+	"""
+	frames_total = 256 # total number of memory frames to simulate
 	frames_per_line = 32 # output tuning
 	t_memmove = 1 # ms taken to move one frame of memory
+	frames_virtual = 3 # number of frames in fixed memory allocation scheme for some process
 
 	def __init__(self, input_file):
 		self.reset(input_file)
 
 	def reset(self, input_file):
-		self.memory = '.' * Mnemokinesis.frames_total
+		self.t = 0 # Time elapsed
+		self.memory = '.' * Mnemokinesis.frames_total # Periods represent free memory frames.
 
 	def __repr__(self):
 		border = '=' * Mnemokinesis.frames_per_line
 		memory_wrapped = textwrap.fill(self.memory, Mnemokinesis.frames_per_line)
 		return  border + '\n' + memory_wrapped + '\n' + border
 
+	def valid_line(self, line):
+		"""
+		Any line beginning with a # character is ignored (these lines are comments).
+		Further, all blank lines are also ignored, including lines containing only
+		whitespace characters.
+		"""
+		return (not line.isspace()) and line[0] != '#'
+
 	def read_input(self, input_file):
+		"""
+		The maximum number of processes in the simulation will be 26.
+		Processes are not guaranteed to be given in alphabetical order.
+		"""
 		with open(input_file, 'r') as input_data:
-			print 'TODO'
+			#TODO maintain a list containing
+				#where each process is allocated
+				#how much contiguous memory each process uses
+				#where and how much free memory is available
+					#i.e. where each free partition is
+			print 'TODO read_input'
+
+	def simulate(self, algorithm):
+		algo_names = {
+			'NF': 'Contiguous -- Next-Fit',
+			'BF': 'Contiguous -- Best-Fit',
+			'WF': 'Contiguous -- Worst-Fit',
+			'NC': 'Non-contiguous'
+		}
+
+		print 'time {}ms: Simulator started ({})'.format(self.t, algo_names[algorithm])
+
+		#TODO When defragmentation occurs, all process' pending arrival times must
+		# increase according to defragmentation time.
+
+		#TODO Next-Fit
+
+		#TODO Best-Fit
+
+		#TODO Worst-Fit
+
+		#TODO Non-Contiguous Memory Management
+
+		print 'TODO simulate ' + algorithm
+
+	def simulate_virtual(self, algorithm):
+		print 'Simulating {} with fixed frame size of {}'.format(algorithm, Mnemokinesis.frames_virtual)
+
+		#TODO OPT
+
+		#TODO LRU
+
+		#TODO LFU
+
+		print 'TODO simulate ' + algorithm
+
 
 def main():
 	# Check command line arguments.
-	if len(sys.argv) != 2:
+	if len(sys.argv) != 3:
 		print 'ERROR Invalid arguments'
-		print 'USAGE: python mnemokinesis.py <input-file>'
+		print 'USAGE: python mnemokinesis.py <input_file> <page_reference_file>'
 		sys.exit(2)
 
 	input_file = sys.argv[1]
+	page_reference_file = sys.argv[2]
 
-	#TODO Contiguous Memory Management
-		#TODO Next-Fit
-		#TODO Best-Fit
-		#TODO Worst-Fit
-	#TODO Non-Contiguous Memory Management
-	#TODO Virtual Memory Management
-		#TODO OPT
-		#TODO LRU
-		#TODO LFU
+	mk = Mnemokinesis(input_file)
+	algorithms = ['NF', 'BF', 'WF', 'NC']
+	algorithms_virtual = ['OPT', 'LRU', 'LFU']
+
+	for algorithm in algorithms:
+		mk.simulate(algorithm)
+		mk.reset(input_file)
+
+	for algorithm in algorithms_virtual:
+		# TODO Should a separate mk class be specified for virtual memory?
+		mk.simulate_virtual(algorithm)
+		mk.reset(input_file)
 
 
 if __name__ == '__main__':
