@@ -45,11 +45,32 @@ class Mnemokinesis(object):
 		Processes are not guaranteed to be given in alphabetical order.
 		"""
 		with open(input_file, 'r') as input_data:
+			process_strings = [line.strip() for line in input_data if self.valid_line(line)]
+			self.process_list = []
+
+			try:
+				for process_string in process_strings:
+					# The overall number of processes to simulate is specified first
+					#  on a line by itself.
+					# This allows for dynamic memory allocation to occur.
+					if process_string == process_strings[0]:
+						self.num_processes = int(process_string)
+
+					# Split on <= 1 space or tab characters.
+					process_params = process_string.split()
+					pid = process_params[0]
+					arrival_run_times = process_params[1:]
+					self.process_list.append(Process(pid, arrival_run_times))
+
+			except TypeError as err:
+				print 'TODO handle TypeErrors'
+
 			#TODO maintain a list containing
 				#where each process is allocated
 				#how much contiguous memory each process uses
 				#where and how much free memory is available
 					#i.e. where each free partition is
+
 			print 'TODO read_input'
 
 	def simulate(self, algorithm):
