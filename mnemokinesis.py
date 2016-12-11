@@ -9,6 +9,7 @@ contiguous, non-contiguous, and virtual memory.
 
 import sys
 import textwrap
+from process import Process
 
 class Mnemokinesis(object):
 	"""
@@ -25,6 +26,7 @@ class Mnemokinesis(object):
 	def reset(self, input_file):
 		self.t = 0 # Time elapsed
 		self.memory = '.' * Mnemokinesis.frames_total # Periods represent free memory frames.
+		self.read_input(input_file)
 
 	def __repr__(self):
 		border = '=' * Mnemokinesis.frames_per_line
@@ -55,23 +57,17 @@ class Mnemokinesis(object):
 					# This allows for dynamic memory allocation to occur.
 					if process_string == process_strings[0]:
 						self.num_processes = int(process_string)
-
-					# Split on <= 1 space or tab characters.
-					process_params = process_string.split()
-					pid = process_params[0]
-					arrival_run_times = process_params[1:]
-					self.process_list.append(Process(pid, arrival_run_times))
+					else:
+						# Split on <= 1 space or tab characters.
+						process_params = process_string.split()
+						pid = process_params[0]
+						memory_frames = process_params[1]
+						arrival_run_times = process_params[2:]
+						self.process_list.append(Process(pid, memory_frames, arrival_run_times))
 
 			except TypeError as err:
-				print 'TODO handle TypeErrors'
-
-			#TODO maintain a list containing
-				#where each process is allocated
-				#how much contiguous memory each process uses
-				#where and how much free memory is available
-					#i.e. where each free partition is
-
-			print 'TODO read_input'
+				print err
+				sys.exit(1)
 
 	def simulate(self, algorithm):
 		algo_names = {
@@ -83,18 +79,36 @@ class Mnemokinesis(object):
 
 		print 'time {}ms: Simulator started ({})'.format(self.t, algo_names[algorithm])
 
-		#TODO When defragmentation occurs, all process' pending arrival times must
-		# increase according to defragmentation time.
+		while not all([process.has_terminated() for process in self.process_list]):
+			#TODO maintain a list containing
+					#where each process is allocated
+					#how much contiguous memory each process uses
+					#where and how much free memory is available
+						#i.e. where each free partition is
 
-		#TODO Next-Fit
+			#TODO When defragmentation occurs, all process' pending arrival times must
+			# increase according to defragmentation time.
 
-		#TODO Best-Fit
+			for process in self.process_list:
+				if self.t in process.arrival_times:
+					print 'time {}ms: Process {} arrived (requires {} frames)'.format(
+						self.t, process.pid, process.memory_frames)
 
-		#TODO Worst-Fit
+			#TODO Next-Fit
 
-		#TODO Non-Contiguous Memory Management
+			#TODO Best-Fit
 
-		print 'TODO simulate ' + algorithm
+			#TODO Worst-Fit
+
+			#TODO Non-Contiguous Memory Management
+
+			self.t += 1
+
+			# TODO for initial testing
+			if self.t == 2000:
+				break;
+
+		print 'time {}ms: Simulator ended ({})'.format(self.t, algo_names[algorithm])
 
 	def simulate_virtual(self, algorithm):
 		print 'Simulating {} with fixed frame size of {}'.format(algorithm, Mnemokinesis.frames_virtual)
