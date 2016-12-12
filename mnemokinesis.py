@@ -28,7 +28,7 @@ class Mnemokinesis(object):
 		self.memory = '.' * Mnemokinesis.frames_total # Periods represent free memory frames.
 		self.read_input(input_file)
 		self.allocated_processes = [] # keep track of processes in memory,
-			# in the order they were placed (tuples of process, placed index)
+			# in the order they were placed, as tuples of (process, last placed index)
 
 	def __repr__(self):
 		border = '=' * Mnemokinesis.frames_per_line
@@ -85,12 +85,6 @@ class Mnemokinesis(object):
 		print 'time {}ms: Simulator started ({})'.format(self.t, algo_names[algorithm])
 
 		while True:
-			#TODO maintain a list (dictionary?) containing
-				#where each process is allocated
-				#how much contiguous memory each process uses
-				#where and how much free memory is available
-					#i.e. where each free partition is
-
 			for process in self.process_list:
 				# Place arriving processes if not in memory already.
 				if (self.t in process.arrival_times and
@@ -161,24 +155,16 @@ class Mnemokinesis(object):
 		#  until we find a partition that fits this process.
 		if self.allocated_processes:
 			process_placed_last = self.allocated_processes[-1]
-			#print '\tnf_index.process_placed_last:', process_placed_last[0]
 			search_from_index = (process_placed_last[1] +
 				process_placed_last[0].memory_frames)
-			# print '\t\tprocess_placed_last.pid:', process_placed_last.pid
-			# print '\t\ttype(process_placed_last.pid):', type(process_placed_last.pid)
-			# print '\t\tself.memory:', self.memory
-			# print '\t\tself.memory.find(process_placed_last.pid):', self.memory.find(process_placed_last.pid) #TODO debug
-			# print '\t\tprocess_placed_last.memory_frames:', process_placed_last.memory_frames #TODO debug
 		else:
 			search_from_index = 0
 
 		free_partition_bounds = self.get_free_partition(search_from_index)
-		#print '\tfree_partition_bounds', free_partition_bounds # TODO debug
 
 		while free_partition_bounds[1] - free_partition_bounds[0] + 1 < process.memory_frames:
 			free_partition_bounds = self.get_free_partition(
 				free_partition_bounds[1])
-			#print '\t\tfree_partition_bounds', free_partition_bounds # TODO debug
 
 		return free_partition_bounds[0]
 
@@ -186,7 +172,6 @@ class Mnemokinesis(object):
 		"""Return the bounds of the next free partition sought from index.
 		Assume defragmentation has just occurred, if it was necessary.
 		"""
-		#print '\tget_free_partition({})'.format(index)# TODO debug
 		# If not seeking from the end of memory, behave as expected.
 		if index < len(self.memory) - 1:
 			start_free_index = self.memory.find('.', index)
