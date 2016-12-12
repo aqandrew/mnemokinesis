@@ -121,7 +121,8 @@ class Mnemokinesis(object):
 							free_indexs = self.non_contiguous_place(process)
 						elif algorithm == 'BF':
 							free_index = self.best_fit_index(process)
-						# TODO calculate free_index for WF
+						elif algorithm == 'WF':
+							free_index = self.worst_fit_index(process)
 
 						if algorithm != 'NC':
 							self.place_process(process, free_index)
@@ -131,11 +132,13 @@ class Mnemokinesis(object):
 						print 'time {}ms: Cannot place process {} -- skipped!\n{}'.format(
 							self.t, process.pid, self)
 
+
 			# Terminate as soon as the last process leaves memory.
 			if self.has_terminated():
 				break
 			self.t += 1
-		print 'time {}ms: Simulator ended ({})'.format(self.t, algo_names[algorithm])
+
+		print 'time {}ms: Simulator ended ({})\n'.format(self.t, algo_names[algorithm])
 
 	def has_terminated(self):
 		"""Return True if the time that has elapsed in the simulation surpasses
@@ -220,6 +223,7 @@ class Mnemokinesis(object):
 
 		return free_partition_bounds[0]
 
+
 	def non_contiguous_place(self, process):
 		## Already know we have enough memory, just replace first
 		## found '.'
@@ -238,6 +242,37 @@ class Mnemokinesis(object):
 		pid = process.pid
 		self.memory = self.memory.replace(pid, '.')
 
+	def worst_fit_index(self, process):
+		"""Return the first index in memory of a free partition that can fit
+		 the specified process for Worst-Fit.
+		Assume defragmentation has just occurred, if it was necessary.
+		"""
+		# Allocate process P to the largest free partition
+		#  that's big enough to fit process P.
+		possible_partitions = []
+
+		free_partition_bounds = self.get_free_partition(0)
+
+		while True:
+			free_partition_bounds = self.get_free_partition(
+				free_partition_bounds[1])
+			# We haven't seen this free partition before.
+			if free_partition_bounds not in possible_partitions:
+				possible_partitions.append(free_partition_bounds)
+			# If we have, we are done looping.
+			else:
+				break
+
+		if possible_partitions and len(possible_partitions) > 1:
+			# Find the largest partition in the accumulated list.
+			worst_fit_partition_size = max([partition[1] - partition[0]
+				for partition in possible_partitions
+				if partition[1] - partition[0] + 1 >= process.memory_frames])
+			free_partition_bounds = next(partition for partition in possible_partitions
+				if partition[1] - partition[0] == worst_fit_partition_size)
+
+		return free_partition_bounds[0]
+
 
 	def place_process(self, process, index):
 		memory_preceding = self.memory[:index]
@@ -254,7 +289,6 @@ class Mnemokinesis(object):
 				self.allocated_processes) # list.remove() behaves incorrectly
 
 		self.allocated_processes.append((process, index))
-		#print '\tself.allocated_processes after placing', process.pid, self.allocated_processes # TODO debug
 
 
 	def remove_process(self, process):
@@ -265,9 +299,6 @@ class Mnemokinesis(object):
 
 		self.memory = (memory_preceding + '.' * process.memory_frames +
 			memory_following)
-		# self.allocated_processes = filter(lambda p: p.pid != process.pid,
-		# 	self.allocated_processes) # list.remove() behaves incorrectly
-		# print '\tself.allocated_processes after removing', process.pid, self.allocated_processes # TODO debug
 
 	def must_defragment_for(self, process):
 		"""Return True if no contiguous partition of free memory is large enough
@@ -294,13 +325,25 @@ class Mnemokinesis(object):
 		return True
 
 	def defragment(self):
-		self.memory = ''.join([process[0].pid * process[0].memory_frames
-			for process in self.allocated_processes
-			if self.memory.find(process[0].pid) != -1])
+		# Identify any processes already at the top of memory,
+		#  i.e. processes whose frames won't be moved.
+		stationary_end_index = 0
 
-		frames_moved = len(self.memory)
+		for index, char in enumerate(self.memory):
+			if char == '.':
+				stationary_end_index = index
+				break
 
-		self.memory += '.' * (Mnemokinesis.frames_total - frames_moved)
+		stationary_memory = self.memory[:stationary_end_index]
+		moved_processes = [process for process in self.allocated_processes
+			if self.memory.find(process[0].pid) != -1 and
+				stationary_memory.find(process[0].pid) == -1]
+		moved_memory = [process[0].pid * process[0].memory_frames
+			for process in moved_processes]
+
+		self.memory = stationary_memory + ''.join(moved_memory)
+		frames_moved = len(''.join(moved_memory))
+		self.memory += '.' * (Mnemokinesis.frames_total - frames_moved - len(stationary_memory))
 
 		# When defragmentation occurs, all process' pending arrival times must
 		#  increase according to defragmentation time.
@@ -315,18 +358,14 @@ class Mnemokinesis(object):
 				process.arrival_times[process.times_run] += defrag_time
 
 		# And increase run times for processes that are currently running.
-		#print '\tself.memory:', self.memory
 		for process in [process_tuple[0] for process_tuple in self.allocated_processes]:
 			if self.memory.find(process.pid) != -1:
-				#print '\tfound', process.pid, 'in self.memory at', self.memory.find(process.pid)
 				process.run_times[process.times_run] += defrag_time
-				#print '\t\tincreased {}.run_time[{}] to {}'.format(process.pid, process.times_run, process.run_times[process.times_run]) # TODO debug
 
 		self.t += defrag_time
 		print 'time {}ms: Defragmentation complete (moved {} frames: {})'.format(
 			self.t, frames_moved, ', '.join([process[0].pid
-			for process in self.allocated_processes
-			if self.memory.find(process[0].pid) != -1]))
+			for process in moved_processes]))
 
 	def simulate_virtual(self, algorithm):
 		print 'Simulating {} with fixed frame size of {}'.format(algorithm, Mnemokinesis.frames_virtual)
@@ -352,7 +391,9 @@ def main():
 
 	mk = Mnemokinesis(input_file)
 	#algorithms = ['NF', 'BF', 'WF', 'NC']
-	algorithms = ['NF', 'BF','NC'] # TODO for initial testing
+
+	algorithms = ['NF', 'BF', 'WF', 'NC'] # TODO for initial testing
+
 	algorithms_virtual = ['OPT', 'LRU', 'LFU']
 
 	for algorithm in algorithms:
