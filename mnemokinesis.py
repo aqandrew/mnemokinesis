@@ -102,7 +102,9 @@ class Mnemokinesis(object):
 
 						if algorithm == 'NF':
 							free_index = self.next_fit_index(process)
-						# TODO calculate free_index for BF, WF
+						elif algorithm == 'BF':
+							free_index = self.best_fit_index(process)
+						# TODO calculate free_index for WF
 
 						self.place_process(process, free_index)
 						print 'time {}ms: Placed process {}:\n{}'.format(
@@ -183,8 +185,40 @@ class Mnemokinesis(object):
 			if ((index > start_free_index and char != '.') or
 					index == len(self.memory) - 1):
 				end_free_index = index
+				break
 
 		return (start_free_index, end_free_index)
+
+	def best_fit_index(self, process):
+		"""Return the first index in memory of a free partition that can fit
+		 the specified process for Best-Fit.
+		Assume defragmentation has just occurred, if it was necessary.
+		"""
+		# Allocate process P to the smallest free partition
+		#  that's big enough to fit process P.
+		possible_partitions = []
+
+		free_partition_bounds = self.get_free_partition(0)
+
+		while True:
+			free_partition_bounds = self.get_free_partition(
+				free_partition_bounds[1])
+			# We haven't seen this free partition before.
+			if free_partition_bounds not in possible_partitions:
+				possible_partitions.append(free_partition_bounds)
+			# If we have, we are done looping.
+			else:
+				break
+
+		if possible_partitions and len(possible_partitions) > 1:
+			# Find the smallest partition in the accumulated list.
+			best_fit_partition_size = min([partition[1] - partition[0]
+				for partition in possible_partitions
+				if partition[1] - partition[0] + 1 >= process.memory_frames])
+			free_partition_bounds = next(partition for partition in possible_partitions
+				if partition[1] - partition[0] == best_fit_partition_size)
+
+		return free_partition_bounds[0]
 
 	# TODO refactor for NC
 	def place_process(self, process, index):
@@ -300,7 +334,7 @@ def main():
 
 	mk = Mnemokinesis(input_file)
 	#algorithms = ['NF', 'BF', 'WF', 'NC']
-	algorithms = ['NF'] # TODO for initial testing
+	algorithms = ['NF', 'BF'] # TODO for initial testing
 	algorithms_virtual = ['OPT', 'LRU', 'LFU']
 
 	for algorithm in algorithms:
