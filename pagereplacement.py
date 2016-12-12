@@ -13,6 +13,12 @@ def initMemory(mem, pos, f):
 		mem.append('.')
 		pos.append(0)
 
+def minimum_val(x, y):
+	if x < y:
+		return x
+	else:
+		return y
+
 def seeFuture(page, references, counter):
 	lengthRemaining = len(references) - counter
 	remainingPages = counter - 1
@@ -26,19 +32,19 @@ def seeFuture(page, references, counter):
 		if i == lengthRemaining:
 			return i
 	
-def getEqual(li):
+def getEqual(li, equal_idx):
 	count = 0
-	test = []
-	for x in li:
-		if x not in test:
-			test.append(x)
+	maxm = getMax(li)
+	equal_idx.append(maxm)
+	for x in range(0, len(li)):
+		if x == maxm:
+			continue
 		else:
-			count += 1
-
-	if count > 0:
-		return test
-	else:
-		return []
+			if li[x] == li[maxm]:
+				equal_idx.append(x)
+				count = 1
+	
+	return count
 	
 def getMin(li):
 	minm = li[0]  
@@ -64,6 +70,7 @@ def optAlg(f, references):
 	point_pos = 0
 	mem = []
 	mem_pos = []
+	equal_idx = []
 
 	initMemory(mem, mem_pos, f)
 		
@@ -80,9 +87,19 @@ def optAlg(f, references):
 				for i in range(0, f):
 					mem_pos[i] = seeFuture(mem[i], references, x)
 				
-				lru_idx = getMax(mem_pos)
-				victim = mem[lru_idx]
-				mem[lru_idx] = references[x]
+				if getEqual(mem_pos, equal_idx) == 1:
+					min_idx = mem.index(min(mem))
+					if min_idx in equal_idx:
+						opt_idx = min_idx
+					else:
+						cur_min = minimum_val(mem[equal_idx[0]],mem[equal_idx[1]])
+						opt_idx = mem.index(cur_min)
+				else:
+					opt_idx = getMax(mem_pos)
+				victim = mem[opt_idx]
+				mem[opt_idx] = references[x]
+				equal_mem = []
+				equal_idx = []
 				print ("referencing page " + references[x] + ' [mem: ' + ' '.join([i for i in mem]) + '] PAGE FAULT (victim page ' + victim + ')')
 			num_faults +=1
 	
@@ -126,6 +143,7 @@ def lfuAlg(f, references):
 	point_pos = 0
 	mem = []
 	mem_pos = []
+	equal_idx = []
 
 	initMemory(mem, mem_pos, f)
 	
@@ -139,11 +157,18 @@ def lfuAlg(f, references):
 				mem_pos[idx] = 1
 				print ("referencing page " + references[x] + ' [mem: ' + ' '.join([i for i in mem]) + '] PAGE FAULT (no victim page)')
 			else:
-				#add breaking ties
-				lru_idx = getMin(mem_pos)
-				victim = mem[lru_idx]
-				mem[lru_idx] = references[x]
-				mem_pos[lru_idx] = 1
+				if getEqual(mem_pos, equal_idx) == 1:
+					min_idx = mem.index(min(mem))
+					if min_idx in equal_idx:
+						lfu_idx = min_idx
+					else:
+						cur_min = minimum_val(mem[equal_idx[0]],mem[equal_idx[1]])
+						lfu_idx = mem.index(cur_min)
+				else:
+					lfu_idx = getMin(mem_pos)
+				victim = mem[lfu_idx]
+				mem[lfu_idx] = references[x]
+				mem_pos[lfu_idx] = 1
 				print ("referencing page " + references[x] + ' [mem: ' + ' '.join([i for i in mem]) + '] PAGE FAULT (victim page ' + victim + ')')
 			num_faults +=1
 		else:
