@@ -132,7 +132,7 @@ class Mnemokinesis(object):
 
 			self.t += 1
 
-		print 'time {}ms: Simulator ended ({})'.format(self.t, algo_names[algorithm])
+		print 'time {}ms: Simulator ended ({})\n'.format(self.t, algo_names[algorithm])
 
 	def has_terminated(self):
 		"""Return True if the time that has elapsed in the simulation surpasses
@@ -264,7 +264,6 @@ class Mnemokinesis(object):
 				self.allocated_processes) # list.remove() behaves incorrectly
 
 		self.allocated_processes.append((process, index))
-		#print '\tself.allocated_processes after placing', process.pid, self.allocated_processes # TODO debug
 
 	# TODO refactor for NC
 	def remove_process(self, process):
@@ -275,9 +274,6 @@ class Mnemokinesis(object):
 
 		self.memory = (memory_preceding + '.' * process.memory_frames +
 			memory_following)
-		# self.allocated_processes = filter(lambda p: p.pid != process.pid,
-		# 	self.allocated_processes) # list.remove() behaves incorrectly
-		# print '\tself.allocated_processes after removing', process.pid, self.allocated_processes # TODO debug
 
 	def must_defragment_for(self, process):
 		"""Return True if no contiguous partition of free memory is large enough
@@ -303,16 +299,26 @@ class Mnemokinesis(object):
 
 		return True
 
-	# TODO if a process is already as close to the top of memory as possible,
-	#  don't count its frames as moved
 	def defragment(self):
-		self.memory = ''.join([process[0].pid * process[0].memory_frames
-			for process in self.allocated_processes
-			if self.memory.find(process[0].pid) != -1])
+		# Identify any processes already at the top of memory,
+		#  i.e. processes whose frames won't be moved.
+		stationary_end_index = 0
 
-		frames_moved = len(self.memory)
+		for index, char in enumerate(self.memory):
+			if char == '.':
+				stationary_end_index = index
+				break
 
-		self.memory += '.' * (Mnemokinesis.frames_total - frames_moved)
+		stationary_memory = self.memory[:stationary_end_index]
+		moved_processes = [process for process in self.allocated_processes
+			if self.memory.find(process[0].pid) != -1 and
+				stationary_memory.find(process[0].pid) == -1]
+		moved_memory = [process[0].pid * process[0].memory_frames
+			for process in moved_processes]
+
+		self.memory = stationary_memory + ''.join(moved_memory)
+		frames_moved = len(''.join(moved_memory))
+		self.memory += '.' * (Mnemokinesis.frames_total - frames_moved - len(stationary_memory))
 
 		# When defragmentation occurs, all process' pending arrival times must
 		#  increase according to defragmentation time.
@@ -327,18 +333,14 @@ class Mnemokinesis(object):
 				process.arrival_times[process.times_run] += defrag_time
 
 		# And increase run times for processes that are currently running.
-		#print '\tself.memory:', self.memory
 		for process in [process_tuple[0] for process_tuple in self.allocated_processes]:
 			if self.memory.find(process.pid) != -1:
-				#print '\tfound', process.pid, 'in self.memory at', self.memory.find(process.pid)
 				process.run_times[process.times_run] += defrag_time
-				#print '\t\tincreased {}.run_time[{}] to {}'.format(process.pid, process.times_run, process.run_times[process.times_run]) # TODO debug
 
 		self.t += defrag_time
 		print 'time {}ms: Defragmentation complete (moved {} frames: {})'.format(
 			self.t, frames_moved, ', '.join([process[0].pid
-			for process in self.allocated_processes
-			if self.memory.find(process[0].pid) != -1]))
+			for process in moved_processes]))
 
 	def simulate_virtual(self, algorithm):
 		print 'Simulating {} with fixed frame size of {}'.format(algorithm, Mnemokinesis.frames_virtual)
