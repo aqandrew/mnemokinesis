@@ -27,11 +27,14 @@ class Mnemokinesis(object):
 		self.t = 0 # Time elapsed
 		self.memory = '.' * Mnemokinesis.frames_total # Periods represent free memory frames.
 		self.read_input(input_file)
+		self.allocated_processes = [] # keep track of processes in memory,
+			# in the order they were placed (tuples of process, placed index)
 
 	def __repr__(self):
 		border = '=' * Mnemokinesis.frames_per_line
 		memory_wrapped = textwrap.fill(self.memory, Mnemokinesis.frames_per_line)
-		return  border + '\n' + memory_wrapped + '\n' + border
+		return border + '\n' + memory_wrapped + '\n' + border
+		#return border + '\n' + memory_wrapped + '\n' + border + '\n' + '\n'.join([process.pid + ' ' + repr(process.memory_frames) + '\ta: ' + repr([arrival_time for arrival_time in process.arrival_times]) + '\n\tr: ' + repr([run_time for run_time in process.run_times]) for process in self.process_list]) # TODO debug
 
 	def valid_line(self, line):
 		"""
@@ -69,6 +72,8 @@ class Mnemokinesis(object):
 				print err
 				sys.exit(1)
 
+		self.process_list.sort()
+
 	def simulate(self, algorithm):
 		algo_names = {
 			'NF': 'Contiguous -- Next-Fit',
@@ -79,22 +84,48 @@ class Mnemokinesis(object):
 
 		print 'time {}ms: Simulator started ({})'.format(self.t, algo_names[algorithm])
 
-		while not all([process.has_terminated() for process in self.process_list]):
-			#TODO maintain a list containing
-					#where each process is allocated
-					#how much contiguous memory each process uses
-					#where and how much free memory is available
-						#i.e. where each free partition is
-
-			#TODO When defragmentation occurs, all process' pending arrival times must
-			# increase according to defragmentation time.
+		while True:
+			#TODO maintain a list (dictionary?) containing
+				#where each process is allocated
+				#how much contiguous memory each process uses
+				#where and how much free memory is available
+					#i.e. where each free partition is
 
 			for process in self.process_list:
-				if self.t in process.arrival_times:
+				# Place arriving processes if not in memory already.
+				if (self.t in process.arrival_times and
+						self.memory.find(process.pid) == -1):
 					print 'time {}ms: Process {} arrived (requires {} frames)'.format(
 						self.t, process.pid, process.memory_frames)
 
-			#TODO Next-Fit
+					if self.memory.count('.') >= process.memory_frames:
+						if self.must_defragment_for(process):
+							print ('time {}ms: Cannot place process {}'.format(
+								self.t, process.pid) +
+								' -- starting defragmentation')
+							self.defragment()
+							print self
+
+						if algorithm == 'NF':
+							free_index = self.next_fit_index(process)
+						# TODO calculate free_index for BF, WF
+
+						self.place_process(process, free_index)
+						print 'time {}ms: Placed process {}:\n{}'.format(
+							self.t, process.pid, self)
+					else:
+						print 'time {}ms: Cannot place process {} -- skipped!\n{}'.format(
+							self.t, process.pid, self)
+
+				# Remove processes for each finished run time.
+				end_times = [process.arrival_times[run] + process.run_times[run]
+					for run in range(process.times_run, process.times_to_run)]
+
+				if self.t in end_times and self.memory.find(process.pid) != -1:
+					self.remove_process(process)
+					process.times_run += 1
+					print 'time {}ms: Process {} removed:\n{}'.format(
+						self.t, process.pid, self)
 
 			#TODO Best-Fit
 
@@ -102,13 +133,163 @@ class Mnemokinesis(object):
 
 			#TODO Non-Contiguous Memory Management
 
+			# Terminate as soon as the last process leaves memory.
+			if self.has_terminated():
+				break
+
 			self.t += 1
 
-			# TODO for initial testing
-			if self.t == 2000:
-				break;
-
 		print 'time {}ms: Simulator ended ({})'.format(self.t, algo_names[algorithm])
+
+	def has_terminated(self):
+		"""Return True if the time that has elapsed in the simulation surpasses
+		all 'interesting events' for each process.
+		This is a method extrinsic to each process because there is no guarantee
+		 that a process won't be skipped.
+		"""
+		return (self.memory == '.' * Mnemokinesis.frames_total and
+			all([self.t >= process.arrival_times[run] + process.run_times[run]
+			for process in self.process_list
+			for run in range(len(process.arrival_times))]))
+
+	def next_fit_index(self, process):
+		"""Return the first index in memory of a free partition that can fit
+		 the specified process for Next-Fit.
+		Assume defragmentation has just occurred, if it was necessary.
+		"""
+		# Search from the most recently allocated partition
+		#  until we find a partition that fits this process.
+		if self.allocated_processes:
+			process_placed_last = self.allocated_processes[-1]
+			#print '\tnf_index.process_placed_last:', process_placed_last[0]
+			search_from_index = (process_placed_last[1] +
+				process_placed_last[0].memory_frames)
+			# print '\t\tprocess_placed_last.pid:', process_placed_last.pid
+			# print '\t\ttype(process_placed_last.pid):', type(process_placed_last.pid)
+			# print '\t\tself.memory:', self.memory
+			# print '\t\tself.memory.find(process_placed_last.pid):', self.memory.find(process_placed_last.pid) #TODO debug
+			# print '\t\tprocess_placed_last.memory_frames:', process_placed_last.memory_frames #TODO debug
+		else:
+			search_from_index = 0
+
+		free_partition_bounds = self.get_free_partition(search_from_index)
+		#print '\tfree_partition_bounds', free_partition_bounds # TODO debug
+
+		while free_partition_bounds[1] - free_partition_bounds[0] + 1 < process.memory_frames:
+			free_partition_bounds = self.get_free_partition(
+				free_partition_bounds[1])
+			#print '\t\tfree_partition_bounds', free_partition_bounds # TODO debug
+
+		return free_partition_bounds[0]
+
+	def get_free_partition(self, index):
+		"""Return the bounds of the next free partition sought from index.
+		Assume defragmentation has just occurred, if it was necessary.
+		"""
+		#print '\tget_free_partition({})'.format(index)# TODO debug
+		# If not seeking from the end of memory, behave as expected.
+		if index < len(self.memory) - 1:
+			start_free_index = self.memory.find('.', index)
+		# Otherwise, seek from the 'top' of memory.
+		else:
+			start_free_index = self.memory.find('.')
+
+		for index, char in enumerate(self.memory):
+			if ((index > start_free_index and char != '.') or
+					index == len(self.memory) - 1):
+				end_free_index = index
+
+		return (start_free_index, end_free_index)
+
+	# TODO refactor for NC
+	def place_process(self, process, index):
+		memory_preceding = self.memory[:index]
+		end_index = index + process.memory_frames
+		memory_following = self.memory[end_index:]
+
+		self.memory = (memory_preceding + process.pid * process.memory_frames +
+			memory_following)
+
+		# If the process was previously allocated, 'refresh' it in allocated_processes
+		#  so that it is designated as most recent.
+		if process in [process_tuple[0] for process_tuple in self.allocated_processes]:
+			self.allocated_processes = filter(lambda p: p[0].pid != process.pid,
+				self.allocated_processes) # list.remove() behaves incorrectly
+
+		self.allocated_processes.append((process, index))
+		#print '\tself.allocated_processes after placing', process.pid, self.allocated_processes # TODO debug
+
+	# TODO refactor for NC
+	def remove_process(self, process):
+		index = self.memory.find(process.pid)
+		memory_preceding = self.memory[:index]
+		end_index = index + process.memory_frames
+		memory_following = self.memory[end_index:]
+
+		self.memory = (memory_preceding + '.' * process.memory_frames +
+			memory_following)
+		# self.allocated_processes = filter(lambda p: p.pid != process.pid,
+		# 	self.allocated_processes) # list.remove() behaves incorrectly
+		# print '\tself.allocated_processes after removing', process.pid, self.allocated_processes # TODO debug
+
+	def must_defragment_for(self, process):
+		"""Return True if no contiguous partition of free memory is large enough
+			to hold process, False otherwise.
+		Assume that the total free memory is enough to hold process.
+		"""
+		end_free_index = 0
+
+		while True:
+			free_index = self.memory.find('.', end_free_index)
+
+			if free_index == -1 or free_index == len(self.memory) - 1:
+				break
+
+			for index, char in enumerate(self.memory):
+				if ((index > free_index and char != '.') or
+						index == len(self.memory) - 1):
+					end_free_index = index
+					break
+
+			if end_free_index - free_index >= process.memory_frames:
+				return False
+
+		return True
+
+	def defragment(self):
+		self.memory = ''.join([process[0].pid * process[0].memory_frames
+			for process in self.allocated_processes
+			if self.memory.find(process[0].pid) != -1])
+
+		frames_moved = len(self.memory)
+
+		self.memory += '.' * (Mnemokinesis.frames_total - frames_moved)
+
+		# When defragmentation occurs, all process' pending arrival times must
+		#  increase according to defragmentation time.
+		defrag_time = frames_moved * Mnemokinesis.t_memmove
+
+		for process in self.process_list:
+			process.arrival_times = [
+				(arrival_time + defrag_time if arrival_time > self.t else arrival_time)
+				for arrival_time in process.arrival_times]
+			# Increase current run time for any process that caused defragmentation.
+			if self.t in process.arrival_times:
+				process.arrival_times[process.times_run] += defrag_time
+
+		# And increase run times for processes that are currently running.
+		#print '\tself.memory:', self.memory
+		for process in [process_tuple[0] for process_tuple in self.allocated_processes]:
+			if self.memory.find(process.pid) != -1:
+				#print '\tfound', process.pid, 'in self.memory at', self.memory.find(process.pid)
+				process.run_times[process.times_run] += defrag_time
+				#print '\t\tincreased {}.run_time[{}] to {}'.format(process.pid, process.times_run, process.run_times[process.times_run]) # TODO debug
+
+		self.t += defrag_time
+		print 'time {}ms: Defragmentation complete (moved {} frames: {})'.format(
+			self.t, frames_moved, ', '.join([process[0].pid
+			for process in self.allocated_processes
+			if self.memory.find(process[0].pid) != -1]))
 
 	def simulate_virtual(self, algorithm):
 		print 'Simulating {} with fixed frame size of {}'.format(algorithm, Mnemokinesis.frames_virtual)
@@ -133,7 +314,8 @@ def main():
 	page_reference_file = sys.argv[2]
 
 	mk = Mnemokinesis(input_file)
-	algorithms = ['NF', 'BF', 'WF', 'NC']
+	#algorithms = ['NF', 'BF', 'WF', 'NC']
+	algorithms = ['NF'] # TODO for initial testing
 	algorithms_virtual = ['OPT', 'LRU', 'LFU']
 
 	for algorithm in algorithms:
