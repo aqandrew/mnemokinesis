@@ -8,22 +8,37 @@
 import sys
 import os.path
 
-def countNum(memory):
-	num_counter = 0
-	for x in memory:
-		if x > 0:
-			num_counter += 1
-	return num_counter
+def initMemory(mem, pos, f):
+	for i in range(0, f):
+		mem.append('.')
+		pos.append(0)
+
+def getMin(li):
+	minm = li[0]  
+	
+	for i in range(1, len(li)):
+		if li[i] < minm:
+			minm = li[i]
+	
+	return li.index(minm)
+
+def getMax(li):
+	maxm = li[0]  
+	
+	for i in range(1, len(li)):
+		if li[i] > maxm:
+			maxm = li[i]
+	
+	return li.index(maxm)
 
 def optAlg(f, references):
 	num_faults = 0
-	
-	mem = []
 	idx = 0
-	
-	for i in range(0, f):
-		mem.append('.')
-	
+	mem = []
+	mem_pos = []
+
+	initMemory(mem, mem_pos, f)
+		
 	print ('Simulating OPT with fixed frame size of ' + str(f))
 	for x in references:
 		if x not in mem:
@@ -36,43 +51,69 @@ def optAlg(f, references):
 				mem[2] = x
 				print ("referencing page " + x + ' [mem: ' + ' '.join([i for i in mem]) + '] PAGE FAULT (victim page ' + victim + ')')
 			num_faults +=1
-		'''
 		else:
-			if countNum(mem) == 3:
-				mem[2] = x
-			else if countNum(mem) == 2:
-				mem[1] = 
-			else if countNum(mem) == 1:
-				mem[0] = '.'
-		'''
-		
-		
-
+			print ('hi')
 	print ('End of OPT simulation (' + str(num_faults) + ' page faults)')
 
 def lruAlg(f, references):	
 	num_faults = 0
-	mem = ['.', '.', '.']
+	idx = 0
+	point_pos = 0
+	lru_idx = 0
+	mem = []
+	mem_pos = []
+
+	initMemory(mem, mem_pos, f)
+
 	print ('Simulating LRU with fixed frame size of ' + str(f))
-	for x in references:
-		if x not in mem and mem.count('.') > 0:
-			idx = mem.index('.')
-			mem[idx] = x
-			print ("referencing page " + x + ' [mem: ' + ' '.join([i for i in mem]) + '] PAGE FAULT (no victim page)')
-			num_faults += 1
-	
+	for x in range(0, len(references)):
+		if references[x] not in mem:
+			if mem.count('.') > 0:
+				point_pos = mem.index('.')
+				mem[point_pos] = references[x]
+				idx = mem.index(references[x])
+				mem_pos[idx] = x
+				print ("referencing page " + references[x] + ' [mem: ' + ' '.join([i for i in mem]) + '] PAGE FAULT (no victim page)')
+			else:
+				lru_idx = getMin(mem_pos)
+				victim = mem[lru_idx]
+				mem[lru_idx] = references[x]
+				mem_pos[lru_idx] = x
+				print ("referencing page " + references[x] + ' [mem: ' + ' '.join([i for i in mem]) + '] PAGE FAULT (victim page ' + victim + ')')
+			num_faults +=1
+		else:
+			idx = mem.index(references[x])
+			mem_pos[idx] = x
 	print ('End of LRU simulation (' + str(num_faults) + ' page faults)')
 
 def lfuAlg(f, references):
 	num_faults = 0
-	mem = ['.', '.', '.']
+	idx = 0
+	point_pos = 0
+	mem = []
+	mem_pos = []
+
+	initMemory(mem, mem_pos, f)
+	
 	print ('Simulating LFU with fixed frame size of ' + str(f))
-	for x in references:
-		if x not in mem and mem.count('.') > 0:
-			idx = mem.index('.')
-			mem[idx] = x
-			print ("referencing page " + x + ' [mem: ' + ' '.join([i for i in mem]) + '] PAGE FAULT (no victim page)')
-			num_faults += 1
+	for x in range(0, len(references)):
+		if references[x] not in mem:
+			if mem.count('.') > 0:
+				point_pos = mem.index('.')
+				mem[point_pos] = references[x]
+				idx = mem.index(references[x])
+				mem_pos[idx] = 1
+				print ("referencing page " + references[x] + ' [mem: ' + ' '.join([i for i in mem]) + '] PAGE FAULT (no victim page)')
+			else:
+				lru_idx = getMin(mem_pos)
+				victim = mem[lru_idx]
+				mem[lru_idx] = references[x]
+				mem_pos[lru_idx] = 1
+				print ("referencing page " + references[x] + ' [mem: ' + ' '.join([i for i in mem]) + '] PAGE FAULT (victim page ' + victim + ')')
+			num_faults +=1
+		else:
+			idx = mem.index(references[x])
+			mem_pos[idx] += 1
 	
 	print ('End of LFU simulation (' + str(num_faults) + ' page faults)')
 
