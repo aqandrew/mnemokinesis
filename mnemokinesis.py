@@ -104,7 +104,8 @@ class Mnemokinesis(object):
 							free_index = self.next_fit_index(process)
 						elif algorithm == 'BF':
 							free_index = self.best_fit_index(process)
-						# TODO calculate free_index for WF
+						elif algorithm == 'WF':
+							free_index = self.worst_fit_index(process)
 
 						self.place_process(process, free_index)
 						print 'time {}ms: Placed process {}:\n{}'.format(
@@ -122,10 +123,6 @@ class Mnemokinesis(object):
 					process.times_run += 1
 					print 'time {}ms: Process {} removed:\n{}'.format(
 						self.t, process.pid, self)
-
-			#TODO Best-Fit
-
-			#TODO Worst-Fit
 
 			#TODO Non-Contiguous Memory Management
 
@@ -220,6 +217,37 @@ class Mnemokinesis(object):
 
 		return free_partition_bounds[0]
 
+	def worst_fit_index(self, process):
+		"""Return the first index in memory of a free partition that can fit
+		 the specified process for Worst-Fit.
+		Assume defragmentation has just occurred, if it was necessary.
+		"""
+		# Allocate process P to the largest free partition
+		#  that's big enough to fit process P.
+		possible_partitions = []
+
+		free_partition_bounds = self.get_free_partition(0)
+
+		while True:
+			free_partition_bounds = self.get_free_partition(
+				free_partition_bounds[1])
+			# We haven't seen this free partition before.
+			if free_partition_bounds not in possible_partitions:
+				possible_partitions.append(free_partition_bounds)
+			# If we have, we are done looping.
+			else:
+				break
+
+		if possible_partitions and len(possible_partitions) > 1:
+			# Find the largest partition in the accumulated list.
+			worst_fit_partition_size = max([partition[1] - partition[0]
+				for partition in possible_partitions
+				if partition[1] - partition[0] + 1 >= process.memory_frames])
+			free_partition_bounds = next(partition for partition in possible_partitions
+				if partition[1] - partition[0] == worst_fit_partition_size)
+
+		return free_partition_bounds[0]
+
 	# TODO refactor for NC
 	def place_process(self, process, index):
 		memory_preceding = self.memory[:index]
@@ -275,6 +303,8 @@ class Mnemokinesis(object):
 
 		return True
 
+	# TODO if a process is already as close to the top of memory as possible,
+	#  don't count its frames as moved
 	def defragment(self):
 		self.memory = ''.join([process[0].pid * process[0].memory_frames
 			for process in self.allocated_processes
@@ -334,7 +364,7 @@ def main():
 
 	mk = Mnemokinesis(input_file)
 	#algorithms = ['NF', 'BF', 'WF', 'NC']
-	algorithms = ['NF', 'BF'] # TODO for initial testing
+	algorithms = ['NF', 'BF', 'WF'] # TODO for initial testing
 	algorithms_virtual = ['OPT', 'LRU', 'LFU']
 
 	for algorithm in algorithms:
