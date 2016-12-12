@@ -8,18 +8,46 @@
 import sys
 import os.path
 
+def countNum(memory):
+	num_counter = 0
+	for x in memory:
+		if x > 0:
+			num_counter += 1
+	return num_counter
+
 def optAlg(f, references):
 	num_faults = 0
-	mem = ['.', '.', '.']
+	
+	mem = []
 	idx = 0
+	
+	for i in range(0, f):
+		mem.append('.')
+	
 	print ('Simulating OPT with fixed frame size of ' + str(f))
 	for x in references:
-		if x not in mem and mem.count('.') > 0:
-			idx = mem.index('.')
-			mem[idx] = x
-			print ("referencing page " + x + ' [mem: ' + ' '.join([i for i in mem]) + '] PAGE FAULT (no victim page)')
-			num_faults += 1
+		if x not in mem:
+			if mem.count('.') > 0:
+				idx = mem.index('.')
+				mem[idx] = x
+				print ("referencing page " + x + ' [mem: ' + ' '.join([i for i in mem]) + '] PAGE FAULT (no victim page)')
+			else:
+				victim = mem[2]
+				mem[2] = x
+				print ("referencing page " + x + ' [mem: ' + ' '.join([i for i in mem]) + '] PAGE FAULT (victim page ' + victim + ')')
+			num_faults +=1
+		'''
+		else:
+			if countNum(mem) == 3:
+				mem[2] = x
+			else if countNum(mem) == 2:
+				mem[1] = 
+			else if countNum(mem) == 1:
+				mem[0] = '.'
+		'''
 		
+		
+
 	print ('End of OPT simulation (' + str(num_faults) + ' page faults)')
 
 def lruAlg(f, references):	
