@@ -72,7 +72,7 @@ class Mnemokinesis(object):
 				print err
 				sys.exit(1)
 
-		self.process_list.sort()
+			self.process_list = sorted(self.process_list, key=lambda process: process.pid)
 
 	def simulate(self, algorithm):
 		algo_names = {
@@ -86,14 +86,29 @@ class Mnemokinesis(object):
 
 		while True:
 			for process in self.process_list:
-				# Place arriving processes if not in memory already.
+				# Remove processes for each finished run time.
+				end_times = [process.arrival_times[run] + process.run_times[run]
+					for run in range(process.times_run, process.times_to_run)]
+
+				if self.t in end_times and self.memory.find(process.pid) != -1:
+					if algorithm == 'NC':
+						self.non_contiguous_remove(process)
+					else:
+						self.remove_process(process)
+					process.times_run += 1
+					print 'time {}ms: Process {} removed:\n{}'.format(
+						self.t, process.pid, self)
+				self.process_list = sorted(self.process_list, key=lambda process: process.pid)
+
+			# Place arriving processes if not in memory already.
+			for process in self.process_list:
 				if (self.t in process.arrival_times and
 						self.memory.find(process.pid) == -1):
 					print 'time {}ms: Process {} arrived (requires {} frames)'.format(
 						self.t, process.pid, process.memory_frames)
 
 					if self.memory.count('.') >= process.memory_frames:
-						if self.must_defragment_for(process):
+						if self.must_defragment_for(process) and algorithm != 'NC':
 							print ('time {}ms: Cannot place process {}'.format(
 								self.t, process.pid) +
 								' -- starting defragmentation')
@@ -102,39 +117,24 @@ class Mnemokinesis(object):
 
 						if algorithm == 'NF':
 							free_index = self.next_fit_index(process)
+						if algorithm == 'NC':
+							free_indexs = self.non_contiguous_place(process)
 						elif algorithm == 'BF':
 							free_index = self.best_fit_index(process)
 						# TODO calculate free_index for WF
 
-						self.place_process(process, free_index)
+						if algorithm != 'NC':
+							self.place_process(process, free_index)
 						print 'time {}ms: Placed process {}:\n{}'.format(
 							self.t, process.pid, self)
 					else:
 						print 'time {}ms: Cannot place process {} -- skipped!\n{}'.format(
 							self.t, process.pid, self)
 
-				# Remove processes for each finished run time.
-				end_times = [process.arrival_times[run] + process.run_times[run]
-					for run in range(process.times_run, process.times_to_run)]
-
-				if self.t in end_times and self.memory.find(process.pid) != -1:
-					self.remove_process(process)
-					process.times_run += 1
-					print 'time {}ms: Process {} removed:\n{}'.format(
-						self.t, process.pid, self)
-
-			#TODO Best-Fit
-
-			#TODO Worst-Fit
-
-			#TODO Non-Contiguous Memory Management
-
 			# Terminate as soon as the last process leaves memory.
 			if self.has_terminated():
 				break
-
 			self.t += 1
-
 		print 'time {}ms: Simulator ended ({})'.format(self.t, algo_names[algorithm])
 
 	def has_terminated(self):
@@ -220,7 +220,25 @@ class Mnemokinesis(object):
 
 		return free_partition_bounds[0]
 
-	# TODO refactor for NC
+	def non_contiguous_place(self, process):
+		## Already know we have enough memory, just replace first
+		## found '.'
+		numberFrames = process.memory_frames
+
+		while numberFrames != 0:
+			index = self.memory.find('.')
+			self.memory = self.memory[:index] + process.pid + self.memory[index+1:]
+			numberFrames -= 1
+
+		self.allocated_processes.append((process, index))
+
+
+	def non_contiguous_remove(self, process):
+		## Replace all pid with a '.' for removal
+		pid = process.pid
+		self.memory = self.memory.replace(pid, '.')
+
+
 	def place_process(self, process, index):
 		memory_preceding = self.memory[:index]
 		end_index = index + process.memory_frames
@@ -238,7 +256,7 @@ class Mnemokinesis(object):
 		self.allocated_processes.append((process, index))
 		#print '\tself.allocated_processes after placing', process.pid, self.allocated_processes # TODO debug
 
-	# TODO refactor for NC
+
 	def remove_process(self, process):
 		index = self.memory.find(process.pid)
 		memory_preceding = self.memory[:index]
@@ -334,7 +352,7 @@ def main():
 
 	mk = Mnemokinesis(input_file)
 	#algorithms = ['NF', 'BF', 'WF', 'NC']
-	algorithms = ['NF', 'BF'] # TODO for initial testing
+	algorithms = ['NF', 'BF','NC'] # TODO for initial testing
 	algorithms_virtual = ['OPT', 'LRU', 'LFU']
 
 	for algorithm in algorithms:

@@ -1,6 +1,7 @@
 '''
 	Donald Disha, RCS ID:
 	Andrew Aquino, RCS ID:
+	Parker Slote RCS ID: slotep
 	12/12/2016
 	Operating Systems
 '''
