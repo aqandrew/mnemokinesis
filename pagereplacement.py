@@ -182,8 +182,6 @@ def lfuAlg(f, references):
 				print ("referencing page " + references[x] + ' [mem: ' + ' '.join([i for i in mem]) + '] PAGE FAULT (no victim page)')
 			else:
 				if getEqualMin(mem_pos, equal_idx) == 1:
-					print mem_pos
-					print equal_idx
 					min_idx = mem.index(min(mem))
 					if min_idx in equal_idx:
 						print 'yo'
