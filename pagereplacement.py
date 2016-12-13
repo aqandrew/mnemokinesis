@@ -1,12 +1,7 @@
 '''
-<<<<<<< HEAD:pagereference.py
-	Donald Disha, RCS ID:
-	Andrew Aquino, RCS ID:
-	Parker Slote RCS ID: slotep
-=======
 	Donald Disha, RCS ID: dishad
 	Andrew Aquino, RCS ID: dawneraq
->>>>>>> 201e93c6a76bfbcf023e9cd4d1ac5f63880840f4:pagereplacement.py
+    Parker Slote, RCS ID: slotep
 	12/12/2016
 	Operating Systems
 '''
@@ -184,23 +179,9 @@ def lfuAlg(f, references):
 	print ('End of LFU simulation (' + str(num_faults) + ' page faults)')
 
 def runAlgorithms(f, references):
-	print ("Beginning Virtual Memory Algorithms\n")
 	optAlg(f, references)
-	print ()
+	print 
 	lruAlg(f, references)
-	print ()
+	print 
 	lfuAlg(f, references)
 
-def main():
-	if not os.path.isfile(sys.argv[1]):
-		print ("page reference input file doesnt exist")
-		sys.exit()
-	
-	ref_file = open(sys.argv[1], 'r')
-	file_string = ref_file.read()
-	reference_list = file_string.split()
-	runAlgorithms(3, reference_list)
-	ref_file.close()
-
-if __name__ == '__main__':
-	main()

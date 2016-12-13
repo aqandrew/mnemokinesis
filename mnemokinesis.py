@@ -3,6 +3,10 @@ mnemokinesis.py
 
 CSCI-4210 Operating Systems F16
 
+Donald Disha, RCS ID: dishad
+Andrew Aquino, RCS ID: dawneraq
+Parker Slote, RCS ID: slotep
+
 Python simulation of a variety of memory management systems, including
 contiguous, non-contiguous, and virtual memory.
 """
@@ -10,6 +14,7 @@ contiguous, non-contiguous, and virtual memory.
 import sys
 import textwrap
 from process import Process
+import pagereplacement
 
 class Mnemokinesis(object):
 	"""
@@ -367,16 +372,8 @@ class Mnemokinesis(object):
 			self.t, frames_moved, ', '.join([process[0].pid
 			for process in moved_processes]))
 
-	def simulate_virtual(self, algorithm):
-		print 'Simulating {} with fixed frame size of {}'.format(algorithm, Mnemokinesis.frames_virtual)
-
-		#TODO OPT
-
-		#TODO LRU
-
-		#TODO LFU
-
-		print 'TODO simulate ' + algorithm
+	def simulate_virtual(self, algorithm, references):
+		pagereplacement.runAlgorithms(Mnemokinesis.frames_virtual, references)
 
 
 def main():
@@ -396,14 +393,16 @@ def main():
 
 	algorithms_virtual = ['OPT', 'LRU', 'LFU']
 
+	fp = open(page_reference_file, 'r')
+	file_string = fp.read()
+	reference_list = file_string.split()
+
 	for algorithm in algorithms:
 		mk.simulate(algorithm)
 		mk.reset(input_file)
 
-	for algorithm in algorithms_virtual:
-		# TODO Should a separate mk class be specified for virtual memory?
-		mk.simulate_virtual(algorithm)
-		mk.reset(input_file)
+	mk.simulate_virtual(algorithm, reference_list)
+	fp.close()
 
 
 if __name__ == '__main__':
