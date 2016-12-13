@@ -36,8 +36,8 @@ def seeFuture(page, references, counter):
 		if i == lengthRemaining:
 			return i
 	
-# finds if any two page references are equal in distance
-def getEqual(li, equal_idx):
+# finds if any two page references are equal in distance, compares max value
+def getEqualMax(li, equal_idx):
 	count = 0
 	maxm = getMax(li)
 	equal_idx.append(maxm)
@@ -46,6 +46,21 @@ def getEqual(li, equal_idx):
 			continue
 		else:
 			if li[x] == li[maxm]:
+				equal_idx.append(x)
+				count = 1
+	
+	return count
+
+# finds if any two page references are equal in distance, compares min value
+def getEqualMin(li, equal_idx):
+	count = 0
+	minm = getMin(li)
+	equal_idx.append(minm)
+	for x in range(0, len(li)):
+		if x == minm:
+			continue
+		else:
+			if li[x] == li[minm]:
 				equal_idx.append(x)
 				count = 1
 	
@@ -95,7 +110,7 @@ def optAlg(f, references):
 				for i in range(0, f):
 					mem_pos[i] = seeFuture(mem[i], references, x)
 				
-				if getEqual(mem_pos, equal_idx) == 1:
+				if getEqualMax(mem_pos, equal_idx) == 1:
 					min_idx = mem.index(min(mem))
 					if min_idx in equal_idx:
 						opt_idx = min_idx
@@ -166,9 +181,12 @@ def lfuAlg(f, references):
 				mem_pos[idx] = 1
 				print ("referencing page " + references[x] + ' [mem: ' + ' '.join([i for i in mem]) + '] PAGE FAULT (no victim page)')
 			else:
-				if getEqual(mem_pos, equal_idx) == 1:
+				if getEqualMin(mem_pos, equal_idx) == 1:
+					print mem_pos
+					print equal_idx
 					min_idx = mem.index(min(mem))
 					if min_idx in equal_idx:
+						print 'yo'
 						lfu_idx = min_idx
 					else:
 						cur_min = minimum_val(mem[equal_idx[0]],mem[equal_idx[1]])
