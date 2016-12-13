@@ -1,7 +1,7 @@
 '''
 	Donald Disha, RCS ID: dishad
 	Andrew Aquino, RCS ID: dawneraq
-    Parker Slote, RCS ID: slotep
+	Parker Slote, RCS ID: slotep
 	12/12/2016
 	Operating Systems
 '''
@@ -9,17 +9,20 @@
 import sys
 import os.path
 
+# initializes memory for page references
 def initMemory(mem, pos, f):
 	for i in range(0, f):
 		mem.append('.')
 		pos.append(0)
 
+# returns minimum of 2 values
 def minimum_val(x, y):
 	if x < y:
 		return x
 	else:
 		return y
 
+# looks forward for OPT algorithm
 def seeFuture(page, references, counter):
 	lengthRemaining = len(references) - counter
 	remainingPages = counter - 1
@@ -33,6 +36,7 @@ def seeFuture(page, references, counter):
 		if i == lengthRemaining:
 			return i
 	
+# finds if any two page references are equal in distance
 def getEqual(li, equal_idx):
 	count = 0
 	maxm = getMax(li)
@@ -47,6 +51,7 @@ def getEqual(li, equal_idx):
 	
 	return count
 	
+# returns the index of the minimum element in a list
 def getMin(li):
 	minm = li[0]  
 	
@@ -56,6 +61,7 @@ def getMin(li):
 	
 	return li.index(minm)
 
+# returns the index of the maximum element in a list
 def getMax(li):
 	maxm = li[0]  
 	
@@ -65,6 +71,7 @@ def getMax(li):
 	
 	return li.index(maxm)
 
+# OPT Algorithm
 def optAlg(f, references):
 	num_faults = 0
 	idx = 0
@@ -99,13 +106,13 @@ def optAlg(f, references):
 					opt_idx = getMax(mem_pos)
 				victim = mem[opt_idx]
 				mem[opt_idx] = references[x]
-				equal_mem = []
 				equal_idx = []
 				print ("referencing page " + references[x] + ' [mem: ' + ' '.join([i for i in mem]) + '] PAGE FAULT (victim page ' + victim + ')')
 			num_faults +=1
 	
 	print ('End of OPT simulation (' + str(num_faults) + ' page faults)')
 
+# LRU Algorithm
 def lruAlg(f, references):	
 	num_faults = 0
 	idx = 0
@@ -138,6 +145,7 @@ def lruAlg(f, references):
 
 	print ('End of LRU simulation (' + str(num_faults) + ' page faults)')
 
+# LFU Algorithm
 def lfuAlg(f, references):
 	num_faults = 0
 	idx = 0
@@ -170,6 +178,7 @@ def lfuAlg(f, references):
 				victim = mem[lfu_idx]
 				mem[lfu_idx] = references[x]
 				mem_pos[lfu_idx] = 1
+				equal_idx = []
 				print ("referencing page " + references[x] + ' [mem: ' + ' '.join([i for i in mem]) + '] PAGE FAULT (victim page ' + victim + ')')
 			num_faults +=1
 		else:
@@ -178,6 +187,7 @@ def lfuAlg(f, references):
 	
 	print ('End of LFU simulation (' + str(num_faults) + ' page faults)')
 
+# Runs OPT, LRU, and LFU Algorithms
 def runAlgorithms(f, references):
 	optAlg(f, references)
 	print 
