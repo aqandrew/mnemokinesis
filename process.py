@@ -3,6 +3,10 @@
 """
 process.py
 
+Donald Disha, RCS ID: dishad
+Andrew Aquino, RCS ID: dawneraq
+Parker Slote, RCS ID: slotep
+
 This class represents a process being run by a Mnemokinesis memory manager.
 """
 
