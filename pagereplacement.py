@@ -184,7 +184,6 @@ def lfuAlg(f, references):
 				if getEqualMin(mem_pos, equal_idx) == 1:
 					min_idx = mem.index(min(mem))
 					if min_idx in equal_idx:
-						print 'yo'
 						lfu_idx = min_idx
 					else:
 						cur_min = minimum_val(mem[equal_idx[0]],mem[equal_idx[1]])
